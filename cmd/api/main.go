@@ -5,6 +5,7 @@ import (
 	"log"
 	"rest-apievent/internal/database"
 	"rest-apievent/internal/env"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 type aplication struct {

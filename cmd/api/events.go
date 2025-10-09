@@ -27,7 +27,7 @@ func (app *aplication) createEvent(c *gin.Context) {
 		return
 	}
 
-	if err := app.models.Events.insert(&event); err != nil {
+	if err := app.models.Events.Insert(&event); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error creating event"})
 		return
 	}
@@ -91,7 +91,7 @@ func (app *aplication) updateEvent(c *gin.Context) {
 		return
 	}
 
-	if err := app.models.Events.update(&updatedEvent); err != nil {
+	if err := app.models.Events.Update(&updatedEvent); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error updating event"})
 		return
 	}
@@ -112,5 +112,116 @@ func (app *aplication) deleteEvent(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully"})
+	c.JSON(http.StatusOK, nil)
+}
+
+func (app *aplication) addAttendeeToEvent(c *gin.Context) {
+	eventId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	UserId, err := strconv.Atoi(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	event, err := app.models.Events.Get(eventId)
+	if event == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
+		return
+	}
+
+	if event == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Event not found"})
+		return
+	}
+	userToAdd, err := app.models.Users.Get(UserId)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if userToAdd == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	ExistingAttendee, err := app.models.Attendees.GetByEventAndAttendee(eventId, UserId)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "failed to get attendee"})
+		return
+	}
+
+	if ExistingAttendee == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Attendee already exists"})
+		return
+	}
+	attendee := database.Attendee{
+		EventId: eventId,
+		UserId:  UserId,
+	}
+
+	_, err = app.models.Attendees.Insert(&attendee)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error adding attendee"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Attendee added successfully"})
+}
+
+func (app *aplication) getAttendeesForEvent(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	users, err := app.models.Attendees.GetAttendeesByEvent(id)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": users})
+}
+
+func (app *aplication) deleteAttendeeFromEvent(c *gin.Context) {
+	eventId, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	UserId, err := strconv.Atoi(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = app.models.Events.Delete(UserId, eventId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error deleting attendee"})
+		return
+	}
+
+	c.JSON(http.StatusOK, nil)
+}
+
+func (app *aplication) getEventsByAttendee(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	events, err := app.models.Attendees.GetEventsByAttendee(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"events": events})
 }
